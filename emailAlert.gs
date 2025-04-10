@@ -1,4 +1,4 @@
-//function to pull in data from S&T Metrics spreadsheet and calculate duedates then send email alerts when due dates approach
+//function saved from https://mccarthydanielle.medium.com/trigger-email-reminders-based-on-dates-in-google-sheets-9aa2060d7aa2
 /// Next steps: write code for metrics additions
  
 function emailAlert(){
@@ -36,6 +36,7 @@ function emailAlert(){
   const PI_NAME_HEADER = "PI Last Name"; 
   const DATA_DUE_HEADER = "Data Due Date"; 
   const UNIQUE_ID_HEADER = "Unique ID";
+  const GRANT_STATUS_HEADER = "Grant Status"
 
 
   // Read Headers (Row 1) and produce error message if cannot read in the headers
@@ -61,7 +62,7 @@ function emailAlert(){
     const requiredHeaders = [
       PROJECT_NAME_HEADER, POC_NAME_HEADER, POC_EMAIL_HEADER, PROJECT_FY_HEADER,
       GRANT_NUMBER_HEADER, START_DATE_HEADER, END_DATE_HEADER, CRUISE_START_HEADER,
-      CRUISE_END_HEADER, PI_NAME_HEADER, DATA_DUE_HEADER, UNIQUE_ID_HEADER
+      CRUISE_END_HEADER, PI_NAME_HEADER, DATA_DUE_HEADER, UNIQUE_ID_HEADER, GRANT_STATUS_HEADER
     ];
     let missingHeaders = [];
     requiredHeaders.forEach(header => {
@@ -112,11 +113,11 @@ function emailAlert(){
           var projectFY = data [row][headerMap[PROJECT_FY_HEADER]];
           var project = data [row][headerMap[PROJECT_NAME_HEADER]];
           var grantNumber = data[row][headerMap[GRANT_NUMBER_HEADER]];
-          var grantStart = data[row][headerMap[START_DATE_HEADER]]; 
           var cruiseStart = data[row][headerMap[CRUISE_START_HEADER]];
           var cruiseEnd = data[row][headerMap[CRUISE_END_HEADER]];
           var piName = data[row][headerMap[PI_NAME_HEADER]];
           var uniqueID = data[row][headerMap[UNIQUE_ID_HEADER]];
+          var grantStatus = data[row][headerMap[GRANT_STATUS_HEADER]];
           
           // Define 'today' once for the row processing
           var today = new Date();
@@ -208,6 +209,8 @@ function emailAlert(){
           var cruiseStart = new Date(data[row][headerMap[CRUISE_START_HEADER]]); // Get cruiseStart here
           if (cruiseStart && !isNaN(cruiseStart.getTime())) {
             var cruisePlanDue = new Date (cruiseStart); 
+            cruisePlanDue.setDate(cruiseStart.getDate() - 60); // Modified to just set this for 60 days prior to start date so that 2nd cruises are captured (currently not captured because the FY roject Funded field is not filled in for 2nd fieldwork rows). Will note that POCs need to verify grant funding date to determine actual due date. 
+           /*
            //Set cruise plan due date to 30 days before cruise for any project funded in FY22 or earlier and to 60 days prior to cruise for any project funded in or after FY23
             if(projectFY >= 23){
               cruisePlanDue.setDate(cruiseStart.getDate() - 60); 
@@ -215,13 +218,13 @@ function emailAlert(){
             else{
               cruisePlanDue.setDate(cruiseStart.getDate() - 30);
             }
-
+            */
             var daystoCruisePlanDue = Math.floor((cruisePlanDue - today) / (1000*60*60*24));
             var formattedCruisePlanDue = Utilities.formatDate(cruisePlanDue, "GMT", "MM/dd/yyyy");
             // If Cruise plan is due in less than 30 days, add project to upcomingDueDates array
             if (daystoCruisePlanDue >=0 && daystoCruisePlanDue <=45){
               upcomingDueDates.push({
-                    type:"Cruise Plan",
+                    type:"Cruise Plan*",
                     piName: piName,
                     projectFY: projectFY,
                     grantNumber: grantNumber,
@@ -260,6 +263,71 @@ function emailAlert(){
               } 
           } // Skipped if endDate is invalid
 
+          //~FIRST semiannual report (6 month RPPR)~ 
+          //Starting 2025 - the first semiannual RPPR covers the first 6 months of the grant and is due in eRA 1 month after the 6 month reporting period ends. 
+          var startDate = new Date(data[row][headerMap[START_DATE_HEADER]]); //get grant start date
+          if (startDate && !isNaN(startDate.getTime())) {
+            //Calculate the due date ofthe first semiannual RPPR to be 7 months after start date 
+            semiannual6moDue.setMonth (startDate.getMonth()+7); //use .sentMonth and .getMonth instead of the .setDate and .getDate commands used above
+            var daystosemiannual6moDue = Math.floor((semiannual6moDue - today) / (1000*60*60*24));
+            var formattedsemiannual6moDue = Utilities.formatDate(cruiseReportDue, "GMT", "MM/dd/yyyy");
+            // If  report is due in less than 45 days, add project to upcomingDueDates array
+            if (daystosemiannual6moDue >=0 && daystosemiannual6moDue <=45){
+              upcomingDueDates.push({
+                    type:"6 month RPPR",
+                    piName: piName,
+                    projectFY: projectFY,
+                    grantNumber: grantNumber,
+                    daystoDue: daystosemiannual6moDue,
+                    formattedDueDate: formattedsemiannual6moDue,
+                    pocName: pocName,
+                    pocEmail: pocEmail,
+                    project: project,
+                    uniqueID: uniqueID
+                  });
+              }
+          } else {
+              Logger.log("Row " + currentRowInSheet + ": Invalid Grant Start Date. Skipping RPPR calculations.");
+          }
+      /* BUG FIXING UNDERWAY to try and find a way to notify us of projects that will need to submit semiannual RPPRs to eRA
+        //~January and July Semiannual RPPRs~ 
+        // Starting 2025, after the first 6 month report, the next 6 month RPPR will be due on either 30 Jan or 30 July following the close of the reporting period (see https://docs.google.com/spreadsheets/d/1Xds4itU7zr5cR9MYUwDiMEHtHGkqlFcG/edit?gid=911150554#gid=911150554 for examples)
+
+          var currentYear = new Date().getFullYear();
+          var semiannualJan = new Date (currentYear, 0, 30); // sets the due date for Juanuary semiannual reports for the 30th of January of the current year. Note format is (year, month, day) and Java calculates month as -1 from the calendar month so January = 0. 
+          //may need to figure out a better way to remind us of these reports prior to 1 January
+          
+
+          
+          var semiannualJuly = new Date (currentYear, 6, 30); //sets the due date for July semiannual reports for the 30th of July of the current year
+         
+          if (grantStatus === "Open") {
+              var noCostExtension = new Date(endDate);
+              noCostExtension.setDate(endDate.getDate()-30); //No Cost Extension calculated as 30 days before grant ends (NOTE: PI's should submit NCEs 30 - 60 days before grant end)
+              var daystoNoCostExtension = Math.floor((noCostExtension - today) / (1000 * 60 * 60 * 24));
+              var formattedNoCostExtension = Utilities.formatDate(noCostExtension, "GMT", "MM/dd/yyyy");
+            // Check if the report due date falls within 6 months of either January or July semiannual due dates
+if (isWithinSixMonthsOf(semiannual6moDue, semiannualJan) || isWithinSixMonthsOf(semiannual6moDue, semiannualJuly)) {
+    // If it does, add the project to the upcomingDueDates array{
+            // If it does, add the project to the upcomingDueDates arrayif (daystoNoCostExtension >=0 && daystoNoCostExtension <=45){
+              upcomingDueDates.push({
+                    type:"No Cost Extension Submission Upcoming",
+                    piName: piName,
+                    projectFY: projectFY,
+                    grantNumber: grantNumber,
+                    daystoDue: daystoNoCostExtension,
+                    formattedDueDate: formattedNoCostExtension,
+                    pocName: pocName,
+                    pocEmail: pocEmail,
+                    project: project,
+                    uniqueID: uniqueID
+                  });
+              } 
+          } // Skipped if endDate is invalid
+
+          */ 
+
+
          
           Logger.log ("Row"+ currentRowInSheet + " processed");
 
@@ -292,5 +360,5 @@ function emailAlert(){
       // call the sendUpcomingDueDates function defined below to send a single email with all upcoming due dates to individuals specified in the function
       // update the text of the messages or the recipients within the respective functions 
       sendUpcomingDueDatesEmail(upcomingDueDates);
-      sendPOCemails(upcomingDueDates);
+      //sendPOCemails(upcomingDueDates);
   }
