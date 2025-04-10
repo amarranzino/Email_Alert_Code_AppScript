@@ -360,5 +360,5 @@ if (isWithinSixMonthsOf(semiannual6moDue, semiannualJan) || isWithinSixMonthsOf(
       // call the sendUpcomingDueDates function defined below to send a single email with all upcoming due dates to individuals specified in the function
       // update the text of the messages or the recipients within the respective functions 
       sendUpcomingDueDatesEmail(upcomingDueDates);
-      //sendPOCemails(upcomingDueDates);
+      sendPOCemails(upcomingDueDates);
   }
