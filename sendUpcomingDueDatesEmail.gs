@@ -20,11 +20,13 @@ function sendUpcomingDueDatesEmail(upcomingDueDates){
       "POC Name: " + dueDate.pocName + "<br>"+
       "POC Email: " + dueDate.pocEmail+ "<br><br>";  
     });
+
+    emailContent += "<br><i>*Projects funded prior to FY23 are only required to submit Cruise Plans is only due 30 days before the start of fieldwork. This due date is correct for projects funded in FY23 and beyond but is 30 days earlier than the due date for projects funded prior to FY23. Check project funding year to verify Cruise Plan due date.</i>";
          
     //check if the email contains any due dates prior to sending
-    var emailAddress = ["ashley.marranzino@noaa.gov", "christina.ortiz@noaa.gov", "adrienne.copeland@noaa.gov", "anna.s.lienesch@noaa.gov"].join(", "); //change this to anyone who should receive full email update
+    //var emailAddress = ["ashley.marranzino@noaa.gov", "christina.ortiz@noaa.gov", "adrienne.copeland@noaa.gov", "anna.s.lienesch@noaa.gov"].join(", "); //change this to anyone who should receive full email update
     //**FOR DEBUGGING** turn off var emailAddress above and turn on the one below. (remove .join(",") and send to a single recipient instead)
-    //var emailAddress = "ashley.marranzino@noaa.gov";
+    var emailAddress = "ashley.marranzino@noaa.gov";
     
     //send email
     MailApp.sendEmail({
