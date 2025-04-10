@@ -41,6 +41,9 @@ function delinquent(){
   const DATA_STATUS_HEADER = "Data Status";
   const FIELDWORK_COMPLETED_HEADER = "Fieldwork Completed";
   const UNIQUE_ID_HEADER = "Unique ID";
+  const SEMI_ANNUAL_6M0_HEADER = "Semi Annual 1 6 months";
+  const GRANT_STATUS_HEADER = "Grant Status"
+  const FY_HEADER = "FY"
 
 
 
@@ -69,7 +72,8 @@ function delinquent(){
       PROJECT_NAME_HEADER, POC_NAME_HEADER, POC_EMAIL_HEADER, PROJECT_FY_HEADER,
       GRANT_NUMBER_HEADER, START_DATE_HEADER, END_DATE_HEADER, CRUISE_START_HEADER,
       CRUISE_END_HEADER, PI_NAME_HEADER, DATA_DUE_HEADER, FINAL_REPORT_HEADER, 
-      CRUISE_PLAN_HEADER, CRUISE_REPORT_HEADER, DATA_STATUS_HEADER, FIELDWORK_COMPLETED_HEADER, UNIQUE_ID_HEADER
+      CRUISE_PLAN_HEADER, CRUISE_REPORT_HEADER, DATA_STATUS_HEADER, FIELDWORK_COMPLETED_HEADER, 
+      UNIQUE_ID_HEADER, SEMI_ANNUAL_6M0_HEADER, GRANT_STATUS_HEADER, FY_HEADER
     ];
     let missingHeaders = [];
     requiredHeaders.forEach(header => {
@@ -124,10 +128,15 @@ function delinquent(){
           var piName = data[row][headerMap[PI_NAME_HEADER]];
           var fieldwork = data[row][headerMap[FIELDWORK_COMPLETED_HEADER]];
           var uniqueID = data[row][headerMap[UNIQUE_ID_HEADER]];
+          var fy = data[row][headerMap[FY_HEADER]];
+          var grantStatus = data[row][headerMap[GRANT_STATUS_HEADER]];
           
           // Define 'today' once for the row processing
           var today = new Date();
 
+          if(((projectFY ==="" && fy >=18)|| (projectFY !=="" && projectFY>=18) && grantStatus == "Open")){ //checks for projects funded after FY18 since those projects fall under PAAR requirments. 
+          //projectFY var will only be filled in for project's first row, so code checks for fy (fieldwork year) if projectFY is empty to serve as a proxy for funding year and catch reports for cruises subsequent to first round of fieldwork. 
+          
           //~DATA DELINQUENT (wait until talking to Anna/ Adrienne to determine when data is delinquent)
          /*
           var rawDataDueDateValue = data[row][headerMap[DATA_DUE_HEADER]];
@@ -219,18 +228,12 @@ function delinquent(){
           //~CRUISE PLAN~ UPDATE HERE
           var cruiseStart = new Date(data[row][headerMap[CRUISE_START_HEADER]]); // Get cruiseStart here
           var cruisePlanSubmitted = data[row][headerMap[CRUISE_PLAN_HEADER]];
+          //original curise plan due date calculation removed because projectFY is left blank after the first fieldwork instead, the 60 day report period imposed for all projects beginning in FY23 is calculated and viewers must check if that report is delinquent or not based on the actual project funding year. 
           if (cruiseStart && !isNaN(cruiseStart.getTime())) {
-            var cruisePlanDue = new Date (cruiseStart); 
-           //Set cruise plan due date to 30 days before cruise for any project funded in FY22 or earlier and to 60 days prior to cruise for any project funded in or after FY23
-            if(projectFY >= 23){
-              cruisePlanDue.setDate(cruiseStart.getDate() - 60); 
-            }
-            else{
-              cruisePlanDue.setDate(cruiseStart.getDate() - 30);
-            }
-
-            var daystoCruisePlanDue = Math.floor((cruisePlanDue - today) / (1000*60*60*24));
-            var formattedCruisePlanDue = Utilities.formatDate(cruisePlanDue, "GMT", "MM/dd/yyyy");
+          var cruisePlanDue = new Date (cruiseStart);
+          cruisePlanDue.setDate(cruiseStart.getDate() - 60);
+          var daystoCruisePlanDue = Math.floor((cruisePlanDue - today) / (1000*60*60*24));
+          var formattedCruisePlanDue = Utilities.formatDate(cruisePlanDue, "GMT", "MM/dd/yyyy");
             // If Cruise plan is is overdue and has not been added to S&T Metrics, add to the delinquent array
             if (daystoCruisePlanDue <0 && (!cruisePlanSubmitted || cruisePlanSubmitted === "")){
               delinquent.push({
@@ -249,8 +252,11 @@ function delinquent(){
           } else {
               Logger.log("Row " + currentRowInSheet + ": Invalid Cruise Start Date. Skipping Cruise Plan calculations.");
           }
+        
+          } else{
+            Logger.log ("No delinquent reports for projects funded after FY18");
+          } 
 
-                   
           Logger.log ("Row"+ currentRowInSheet + " processed");
 
         } catch (error) // End of try block
