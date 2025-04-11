@@ -106,6 +106,12 @@ function emailAlert(){
     //Get the values from the data range
     for(var row=0; row < data.length; row++){
       var currentRowInSheet = row + 2
+
+     /* FOR DEBUGGING - turn on the following if loop and select the row you would like to test- this will skip any rows besides the one you input.
+      if(currentRowInSheet !==614){ //skip over all rows besides one - turned on for debugging
+        continue;
+      }
+    */
         try{
           //~GENERAL PROJECT INFO~
           var pocName = data[row][headerMap[POC_NAME_HEADER]];
@@ -154,7 +160,11 @@ function emailAlert(){
 
 
           //~FINAL REPORT~ 
-          var endDate = new Date(data[row][headerMap[END_DATE_HEADER]]); // Get endDate here
+          /*var rawEndDateValue = data[row][headerMap[END_DATE_HEADER]];
+          Logger.log("Row " + currentRowInSheet + ": Raw value from '" + END_DATE_HEADER + "': '" + rawEndDateValue + "'");
+         */
+          var endDate = new Date(data[row][headerMap[END_DATE_HEADER]]);
+          
           if (endDate && !isNaN(endDate.getTime())) {
               var finalReportDue = new Date(endDate);
               finalReportDue.setDate(endDate.getDate()+120); //Adds 120 days to end of grant to calculate the final report due date
@@ -175,8 +185,10 @@ function emailAlert(){
                     uniqueID: uniqueID
                   });
               } else {
-              Logger.log("Row " + currentRowInSheet + ": Invalid Grant End Date. Skipping Final Report & NCE calculations.");
+              Logger.log("Row " + currentRowInSheet + ": Final Report due date > 60 days.");
               }
+          } else {
+            Logger.log ("Row " + currentRowInSheet + ": Invalid Grant End Date. Skipping Final Report & NCE calculations.");
           }
 
           //~CRUISE REPORT~ 
@@ -200,6 +212,8 @@ function emailAlert(){
                     project: project,
                     uniqueID: uniqueID
                   });
+              }else {
+              Logger.log("Row " + currentRowInSheet + ": Cruise Report not due within 45 days.");
               }
           } else {
               Logger.log("Row " + currentRowInSheet + ": Invalid Cruise End Date. Skipping Cruise Report calculations.");
@@ -221,7 +235,7 @@ function emailAlert(){
             */
             var daystoCruisePlanDue = Math.floor((cruisePlanDue - today) / (1000*60*60*24));
             var formattedCruisePlanDue = Utilities.formatDate(cruisePlanDue, "GMT", "MM/dd/yyyy");
-            // If Cruise plan is due in less than 30 days, add project to upcomingDueDates array
+            // If Cruise plan is due in less than 45 days, add project to upcomingDueDates array
             if (daystoCruisePlanDue >=0 && daystoCruisePlanDue <=45){
               upcomingDueDates.push({
                     type:"Cruise Plan*",
@@ -235,6 +249,8 @@ function emailAlert(){
                     project: project,
                     uniqueID: uniqueID
                   });
+              }else {
+              Logger.log("Row " + currentRowInSheet + ": Cruise Plan not due within 45 days.");
               }
           } else {
               Logger.log("Row " + currentRowInSheet + ": Invalid Cruise Start Date. Skipping Cruise Plan calculations.");
@@ -260,15 +276,23 @@ function emailAlert(){
                     project: project,
                     uniqueID: uniqueID
                   });
-              } 
-          } // Skipped if endDate is invalid
+              } else {
+                Logger.log ("Row " + currentRowInSheet + ": NCE not due within 45 days.");
+              }
+          } else {
+            Logger.log ("Row " + currentRowInSheet + ": Invalid Grant End Date. Skipping Final Report & NCE calculations.");
+          }
+        
 
-          //~FIRST semiannual report (6 month RPPR)~ 
+       //~FIRST semiannual report (6 month RPPR)~ 
           //Starting 2025 - the first semiannual RPPR covers the first 6 months of the grant and is due in eRA 1 month after the 6 month reporting period ends. 
           var startDate = new Date(data[row][headerMap[START_DATE_HEADER]]); //get grant start date
+          Logger.log("StartDate: " + startDate);
           if (startDate && !isNaN(startDate.getTime())) {
             //Calculate the due date ofthe first semiannual RPPR to be 7 months after start date 
-            semiannual6moDue.setMonth (startDate.getMonth()+7); //use .sentMonth and .getMonth instead of the .setDate and .getDate commands used above
+            var semiannual6moDue =new Date (startDate);
+            semiannual6moDue.setMonth (semiannual6moDue.getMonth()+7); //use .sentMonth and .getMonth instead of the .setDate and .getDate commands used above
+            Logger.log ("Start date: " + startDate);
             var daystosemiannual6moDue = Math.floor((semiannual6moDue - today) / (1000*60*60*24));
             var formattedsemiannual6moDue = Utilities.formatDate(cruiseReportDue, "GMT", "MM/dd/yyyy");
             // If  report is due in less than 45 days, add project to upcomingDueDates array
@@ -285,51 +309,89 @@ function emailAlert(){
                     project: project,
                     uniqueID: uniqueID
                   });
+              } else {
+              Logger.log("Row " + currentRowInSheet + ": First RPPR not due in 45 days.");
               }
           } else {
               Logger.log("Row " + currentRowInSheet + ": Invalid Grant Start Date. Skipping RPPR calculations.");
           }
-      /* BUG FIXING UNDERWAY to try and find a way to notify us of projects that will need to submit semiannual RPPRs to eRA
+          
+
+      // ~RPPRs after the first 6 month RPPR submission !
         //~January and July Semiannual RPPRs~ 
-        // Starting 2025, after the first 6 month report, the next 6 month RPPR will be due on either 30 Jan or 30 July following the close of the reporting period (see https://docs.google.com/spreadsheets/d/1Xds4itU7zr5cR9MYUwDiMEHtHGkqlFcG/edit?gid=911150554#gid=911150554 for examples)
+        // Starting 2025, after the first 6 month report, the next 6 month RPPR will be due on either 30 Jan or 30 July following the close of the reporting period (see https://docs.google.com/spreadsheets/d/1Xds4itU7zr5cR9MYUwDiMEHtHGkqlFcG/edit?gid=911150554#gid=911150554 for examples)        
 
-          var currentYear = new Date().getFullYear();
-          var semiannualJan = new Date (currentYear, 0, 30); // sets the due date for Juanuary semiannual reports for the 30th of January of the current year. Note format is (year, month, day) and Java calculates month as -1 from the calendar month so January = 0. 
-          //may need to figure out a better way to remind us of these reports prior to 1 January
-          
-
-          
-          var semiannualJuly = new Date (currentYear, 6, 30); //sets the due date for July semiannual reports for the 30th of July of the current year
+                  
          
           if (grantStatus === "Open") {
-              var noCostExtension = new Date(endDate);
-              noCostExtension.setDate(endDate.getDate()-30); //No Cost Extension calculated as 30 days before grant ends (NOTE: PI's should submit NCEs 30 - 60 days before grant end)
-              var daystoNoCostExtension = Math.floor((noCostExtension - today) / (1000 * 60 * 60 * 24));
-              var formattedNoCostExtension = Utilities.formatDate(noCostExtension, "GMT", "MM/dd/yyyy");
-            // Check if the report due date falls within 6 months of either January or July semiannual due dates
-if (isWithinSixMonthsOf(semiannual6moDue, semiannualJan) || isWithinSixMonthsOf(semiannual6moDue, semiannualJuly)) {
-    // If it does, add the project to the upcomingDueDates array{
-            // If it does, add the project to the upcomingDueDates arrayif (daystoNoCostExtension >=0 && daystoNoCostExtension <=45){
-              upcomingDueDates.push({
-                    type:"No Cost Extension Submission Upcoming",
+            let reportStart = new Date (startDate); // clones the startDate and cleans up values to avoid odd Java errors 
+            Logger.log (Utilities.formatDate(reportStart, "GMT", "yyyy-MM-dd")); //ensure date is calculating correctly (otherwise dates may be off by a month)
+            let currentYear = new Date().getFullYear();
+            let semiannualJan = new Date (currentYear, 0, 30); // sets the due date for Juanuary semiannual reports for the 30th of January of the current year. Note format is (year, month, day) and Java calculates month as -1 from the calendar month so January = 0. 
+            let semiannualJuly = new Date (currentYear, 6, 30); //sets the due date for July semiannual reports for the 30th of July of the current year 
+            let daystosemiannualJan = Math.floor((semiannualJan - today) / (1000*60*60*24)); 
+            let daystosemiannualJuly = Math.floor((semiannualJuly - today) / (1000*60*60*24));
+            let formattedsemiannualJan = Utilities.formatDate(semiannualJan, "GMT", "MM/dd/yyyy"); 
+            let formattedsemiannualJuly = Utilities.formatDate(semiannualJuly, "GMT", "MM/dd/yyyy"); 
+            let july1 = new Date ((currentYear-1),6,1); //sets a date for 1 July of previous year
+            let dec31 = new Date ((currentYear-1),11,31); //sets a date for 31 Dec of previous year
+            let jan1 = new Date(currentYear, 0,1); //sets a date for 1 Jan of current year
+            let june30 = new Date (currentYear, 5,30); //sets a date for 30 June of current year
+            let sevenmonthsago = new Date (today);
+            sevenmonthsago.setMonth(sevenmonthsago.getMonth()-7);
+            Logger.log("7 months ago:" + sevenmonthsago);
+
+            Logger.log("Starting RPPR loop"); 
+          
+            while (reportStart <= endDate) {
+              let reportEnd =new Date (reportStart);
+              reportEnd.setMonth(reportEnd.getMonth()+6); // calculate the end of the reporting period as every 6 months from startDate for the duration of the grant cycle
+              
+              Logger.log ("Report period: " + reportStart + " - " + reportEnd);
+
+              if ((reportEnd >= july1 && reportEnd <= dec31) && (daystosemiannualJan >=0 && daystosemiannualJan <=45)){
+                upcomingDueDates.push({
+                  type: "Semi-annual RPPR",
                     piName: piName,
                     projectFY: projectFY,
                     grantNumber: grantNumber,
-                    daystoDue: daystoNoCostExtension,
-                    formattedDueDate: formattedNoCostExtension,
+                    daystoDue: daystosemiannualJan,
+                    formattedDueDate: formattedsemiannualJan,
                     pocName: pocName,
                     pocEmail: pocEmail,
                     project: project,
                     uniqueID: uniqueID
-                  });
-              } 
-          } // Skipped if endDate is invalid
+                });
+                Logger.log("Next RPPR due in Jan"); 
+              } else if((reportEnd >= jan1 && reportEnd <= june30) && 
+               (startDate <= sevenmonthsago) && 
+               (daystosemiannualJuly >=0 && daystosemiannualJuly <=45)){
+                upcomingDueDates.push({
+                  type: "Semi-annual RPPR",
+                    piName: piName,
+                    projectFY: projectFY,
+                    grantNumber: grantNumber,
+                    daystoDue: daystosemiannualJuly,
+                    formattedDueDate: formattedsemiannualJuly,
+                    pocName: pocName,
+                    pocEmail: pocEmail,
+                    project: project,
+                    uniqueID: uniqueID
+                });
+                Logger.log("Next Rppr due in July");
+              } else{
+                Logger.log("Row " + currentRowInSheet + " RPPR not due within 45 days.")
+              }
+              reportStart.setMonth(reportStart.getMonth()+6); //Adds 6 months to the end of the last start Month for the next loop
+            }
+           
+          } else {
+            Logger.log ("Row " + currentRowInSheet + "skipped: " + grantStatus);
+            continue; //move to next row in sheet if grant is closed
+          }
 
-          */ 
-
-
-         
-          Logger.log ("Row"+ currentRowInSheet + " processed");
+                 
+          Logger.log ("Row "+ currentRowInSheet + " processed");
 
         } catch (error) // End of try block
         {
@@ -340,9 +402,8 @@ if (isWithinSixMonthsOf(semiannual6moDue, semiannualJan) || isWithinSixMonthsOf(
       //Sort upcomingDueDates array so that the values are in an order you want
       Logger.log( "Number of upcoming due dates:  " + upcomingDueDates.length);
 
-      
+      Logger.log ("Sorting Due Dates");
       upcomingDueDates.sort(function(a,b){
-        Logger.log ("Sorting Due Dates");
         //First sort by report type
         if(a.type < b.type) return -1;
         if (a.type > b.type) return 1;
@@ -359,6 +420,7 @@ if (isWithinSixMonthsOf(semiannual6moDue, semiannualJan) || isWithinSixMonthsOf(
       // Send an email with the upcoming due dates 
       // call the sendUpcomingDueDates function defined below to send a single email with all upcoming due dates to individuals specified in the function
       // update the text of the messages or the recipients within the respective functions 
+
       sendUpcomingDueDatesEmail(upcomingDueDates);
       sendPOCemails(upcomingDueDates);
   }
