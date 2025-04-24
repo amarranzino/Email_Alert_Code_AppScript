@@ -16,7 +16,7 @@ function sendPOCemails (upcomingDueDates){
         pocEmails[pocEmail]= {
           name: pocName,
           content: "Hello " + pocName + ", "+ "\n\n"+
-          "This is a reminder of the following upcoming NOFO report due dates. Please email  the PI to remind them of the upocoming due date. Please send any relevant templates (i.e. cruise report template) and refer to the NOFO POC Manual (https://drive.google.com/file/d/1_FfysKXe3A7hz6m_h4ALJP_9T9wjqT2t/view?usp=drive_link) for additional information on the upcoming deadline." + "\n\n"
+          "This is a reminder of the following upcoming NOFO report due dates. Please email  the PI to remind them of the upcoming due date. Please send any relevant templates (i.e. cruise report template) and refer to the NOFO POC Manual (https://drive.google.com/file/d/1wGF36iINNm-TWx-Nv5Z3VXVdzbod7wc9/view?usp=sharing) for additional information on the upcoming deadline." + "\n\n"
         };
       }
 
@@ -29,6 +29,8 @@ function sendPOCemails (upcomingDueDates){
       "Grant Number: " + dueDate.grantNumber + "<br>"+
       "Due Date: " + dueDate.formattedDueDate + "<br><br>";
       });
+      
+    emailContent += "<br><i>*Projects funded prior to FY23 are only required to submit Cruise Plans is only due 30 days before the start of fieldwork. This due date is correct for projects funded in FY23 and beyond but is 30 days earlier than the due date for projects funded prior to FY23. Check project funding year to verify Cruise Plan due date. <br> No Cost Extension (NCE) deadline is calculated as 60 days before grant ends. PIs should submit their request for a NCE 60 days prior to the grant end and no later than 30 days before the grant ends. </i>";
       
       //Send email to each POC Name in the group
       for (var pocEmail in pocEmails){
