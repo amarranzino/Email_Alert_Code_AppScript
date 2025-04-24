@@ -9,15 +9,16 @@ function sendDelinquentEmails(delinquent){
   //If there are any due dates listed in the array (delinquent), then create an email listing the information for each delinquent report
   //Use html format for bolding <b> (start of bolding) and </b> (end of bolding) and then use html for spaceing - <br> for hard return (\n in java)
    if (delinquent.length >0){
-    var emailContent =  "Total number of delinquent reports:<b>" + delinquent.length + "</b><br><br>";
+    var emailContent =  "Total number of delinquent reports:<b>" + delinquent.length + "<br><br>"
     delinquent.forEach(function(dueDate){ 
       emailContent += "The " + dueDate.type + " for " + "<b>" + dueDate.uniqueID + "</b>" + " is overdue by " + "<b>" + Math.abs(dueDate.daystoDue) + " days</b>.<br>"
       + "\n";  
     });
          
     //check if the email contains any due dates prior to sending
-    var emailAddress = "ashley.marranzino@noaa.gov"; //change this to anyone who should receive full email update. If multiple people modify as "["name1", "name2", "name3"].join(", "); ""
-    //**FOR DEBUGGING** remove .join(",") and send to a single recipient instead
+    var emailAddress = ["ashley.marranzino@noaa.gov", "christina.ortiz@noaa.gov", "adrienne.copeland@noaa.gov"].join(", "); //change this to anyone who should receive full email update
+    //**FOR DEBUGGING** turn off var emailAddress above and turn on the one below. (remove .join(",") and send to a single recipient instead)
+    //var emailAddress = "ashley.marranzino@noaa.gov";
     
     //send email
     MailApp.sendEmail({
