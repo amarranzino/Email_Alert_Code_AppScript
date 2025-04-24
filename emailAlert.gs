@@ -1,5 +1,5 @@
 //function saved from https://mccarthydanielle.medium.com/trigger-email-reminders-based-on-dates-in-google-sheets-9aa2060d7aa2
-/// Next steps: write code for metrics additions
+/// Next steps: UPDATE RPPR DUE DATES SO FEDS ARE JUST EVERY 6 MONTHS (pull in PI Affiliation col, then filter for All fields starting with "Federal" and if those, then reports are due 30 days after end of reporting window) ; write code for metrics additions
  
 function emailAlert(){
   
@@ -36,7 +36,8 @@ function emailAlert(){
   const PI_NAME_HEADER = "PI Last Name"; 
   const DATA_DUE_HEADER = "Data Due Date"; 
   const UNIQUE_ID_HEADER = "Unique ID";
-  const GRANT_STATUS_HEADER = "Grant Status"
+  const GRANT_STATUS_HEADER = "Grant Status";
+  const PI_AFFILIATION_HEADER = "PI Affiliation"
 
 
   // Read Headers (Row 1) and produce error message if cannot read in the headers
@@ -62,7 +63,8 @@ function emailAlert(){
     const requiredHeaders = [
       PROJECT_NAME_HEADER, POC_NAME_HEADER, POC_EMAIL_HEADER, PROJECT_FY_HEADER,
       GRANT_NUMBER_HEADER, START_DATE_HEADER, END_DATE_HEADER, CRUISE_START_HEADER,
-      CRUISE_END_HEADER, PI_NAME_HEADER, DATA_DUE_HEADER, UNIQUE_ID_HEADER, GRANT_STATUS_HEADER
+      CRUISE_END_HEADER, PI_NAME_HEADER, DATA_DUE_HEADER, UNIQUE_ID_HEADER, GRANT_STATUS_HEADER,
+      PI_AFFILIATION_HEADER
     ];
     let missingHeaders = [];
     requiredHeaders.forEach(header => {
@@ -107,11 +109,11 @@ function emailAlert(){
     for(var row=0; row < data.length; row++){
       var currentRowInSheet = row + 2
 
-     /* FOR DEBUGGING - turn on the following if loop and select the row you would like to test- this will skip any rows besides the one you input.
-      if(currentRowInSheet !==614){ //skip over all rows besides one - turned on for debugging
+     // FOR DEBUGGING - turn on the following if loop and select the row you would like to test- this will skip any rows besides the one you input.
+     /* if(currentRowInSheet !==614){ //skip over all rows besides one - turned on for debugging
         continue;
-      }
-    */
+        }
+     */
         try{
           //~GENERAL PROJECT INFO~
           var pocName = data[row][headerMap[POC_NAME_HEADER]];
@@ -124,6 +126,7 @@ function emailAlert(){
           var piName = data[row][headerMap[PI_NAME_HEADER]];
           var uniqueID = data[row][headerMap[UNIQUE_ID_HEADER]];
           var grantStatus = data[row][headerMap[GRANT_STATUS_HEADER]];
+          var affiliation = data[row][headerMap[PI_AFFILIATION_HEADER]];
           
           // Define 'today' once for the row processing
           var today = new Date();
@@ -259,13 +262,13 @@ function emailAlert(){
           //~NO COST EXTENSION~ (Depends on validated endDate)
           if (endDate && !isNaN(endDate.getTime())) {
               var noCostExtension = new Date(endDate);
-              noCostExtension.setDate(endDate.getDate()-30); //No Cost Extension calculated as 30 days before grant ends (NOTE: PI's should submit NCEs 30 - 60 days before grant end)
+              noCostExtension.setDate(endDate.getDate()-60); //No Cost Extension calculated as 30 days before grant ends (NOTE: PI's should submit NCEs 30 - 60 days before grant end)
               var daystoNoCostExtension = Math.floor((noCostExtension - today) / (1000 * 60 * 60 * 24));
               var formattedNoCostExtension = Utilities.formatDate(noCostExtension, "GMT", "MM/dd/yyyy");
             // If No Cost Extension is due in less than 30 days, add project to upcomingDueDates array
-            if (daystoNoCostExtension >=0 && daystoNoCostExtension <=45){
+            if (daystoNoCostExtension >=0 && daystoNoCostExtension <=30){
               upcomingDueDates.push({
-                    type:"No Cost Extension Submission Upcoming",
+                    type:"No Cost Extension Submission**",
                     piName: piName,
                     projectFY: projectFY,
                     grantNumber: grantNumber,
@@ -294,7 +297,7 @@ function emailAlert(){
             semiannual6moDue.setMonth (semiannual6moDue.getMonth()+7); //use .sentMonth and .getMonth instead of the .setDate and .getDate commands used above
             Logger.log ("Start date: " + startDate);
             var daystosemiannual6moDue = Math.floor((semiannual6moDue - today) / (1000*60*60*24));
-            var formattedsemiannual6moDue = Utilities.formatDate(cruiseReportDue, "GMT", "MM/dd/yyyy");
+            var formattedsemiannual6moDue = Utilities.formatDate(semiannual6moDue, "GMT", "MM/dd/yyyy");
             // If  report is due in less than 45 days, add project to upcomingDueDates array
             if (daystosemiannual6moDue >=0 && daystosemiannual6moDue <=45){
               upcomingDueDates.push({
@@ -321,9 +324,9 @@ function emailAlert(){
         //~January and July Semiannual RPPRs~ 
         // Starting 2025, after the first 6 month report, the next 6 month RPPR will be due on either 30 Jan or 30 July following the close of the reporting period (see https://docs.google.com/spreadsheets/d/1Xds4itU7zr5cR9MYUwDiMEHtHGkqlFcG/edit?gid=911150554#gid=911150554 for examples)        
 
-                  
+                
          
-          if (grantStatus === "Open") {
+          if (grantStatus === "Open" && !affiliation.toString().toLowerCase().includes("federal")) {          
             let reportStart = new Date (startDate); // clones the startDate and cleans up values to avoid odd Java errors 
             Logger.log (Utilities.formatDate(reportStart, "GMT", "yyyy-MM-dd")); //ensure date is calculating correctly (otherwise dates may be off by a month)
             let currentYear = new Date().getFullYear();
@@ -362,7 +365,7 @@ function emailAlert(){
                     project: project,
                     uniqueID: uniqueID
                 });
-                Logger.log("Next RPPR due in Jan"); 
+                Logger.log("Next RPPR due in " + daystosemiannualJan + " days on " + formattedsemiannualJan); 
               } else if((reportEnd >= jan1 && reportEnd <= june30) && 
                (startDate <= sevenmonthsago) && 
                (daystosemiannualJuly >=0 && daystosemiannualJuly <=45)){
@@ -378,19 +381,51 @@ function emailAlert(){
                     project: project,
                     uniqueID: uniqueID
                 });
-                Logger.log("Next Rppr due in July");
+                Logger.log("Next Rppr due in " + daystosemiannualJuly + " days on " + formattedsemiannualJuly);
               } else{
-                Logger.log("Row " + currentRowInSheet + " RPPR not due within 45 days.")
+                Logger.log("Row " + currentRowInSheet + " RPPR not due within 45 days.");
               }
               reportStart.setMonth(reportStart.getMonth()+6); //Adds 6 months to the end of the last start Month for the next loop
             }
            
+          } else if (grantStatus === "Open" && affiliation.toString().toLowerCase().includes("federal")){
+            let reportStart = new Date (startDate); // clones the startDate and cleans up values to avoid odd Java errors 
+            Logger.log ("PI affiliation: " + affiliation); //ensure date is calculating correctly (otherwise dates may be off by a month)
+            let currentYear = new Date().getFullYear();
+            
+            while (reportStart <= endDate) {
+              let reportEnd =new Date (reportStart);
+              reportEnd.setMonth(reportEnd.getMonth()+6); // calculate the end of the reporting period as every 6 months from startDate for the duration of the grant cycle
+              Logger.log ("Report period: " + reportStart + " - " + reportEnd);
+              let semiAnnualRPPRdue = new Date(reportEnd);
+              semiAnnualRPPRdue.setMonth(semiAnnualRPPRdue.getMonth()+1);
+              let daystosemiAnnualRPPRdue = Math.floor((semiAnnualRPPRdue - today) / (1000*60*60*24));
+              let formattedsemiAnnualRPPRdue = Utilities.formatDate(semiAnnualRPPRdue, "GMT", "MM/dd/yyyy");
+
+              Logger.log("Next RPPR due: " + formattedsemiAnnualRPPRdue);
+
+              if (daystosemiAnnualRPPRdue >=0 && daystosemiAnnualRPPRdue <=45){
+              upcomingDueDates.push({
+                  type: "Semi-annual Report - Federal",
+                    piName: piName,
+                    projectFY: projectFY,
+                    grantNumber: grantNumber,
+                    daystoDue: daystosemiAnnualRPPRdue,
+                    formattedDueDate: formattedsemiAnnualRPPRdue,
+                    pocName: pocName,
+                    pocEmail: pocEmail,
+                    project: project,
+                    uniqueID: uniqueID
+                });
+                
+              }
+              reportStart.setMonth(reportStart.getMonth()+6); //Adds 6 months to theend of the last start month for the next Loop
+            }
           } else {
             Logger.log ("Row " + currentRowInSheet + "skipped: " + grantStatus);
             continue; //move to next row in sheet if grant is closed
           }
-
-                 
+                        
           Logger.log ("Row "+ currentRowInSheet + " processed");
 
         } catch (error) // End of try block
