@@ -13,10 +13,10 @@ function sendPOCemails (upcomingDueDates){
       
       // If the email for the POC is not already in the object, initialize it
       if (!pocEmails[pocEmail]){
-        pocEmails[pocEmail]= {
+          pocEmails[pocEmail]= {
           name: pocName,
-          content: "Hello " + pocName + ", "+ "\n\n"+
-          "This is a reminder of the following upcoming NOFO report due dates. Please email  the PI to remind them of the upcoming due date. Please send any relevant templates (i.e. cruise report template) and refer to the NOFO POC Manual (https://drive.google.com/file/d/1wGF36iINNm-TWx-Nv5Z3VXVdzbod7wc9/view?usp=sharing) for additional information on the upcoming deadline." + "\n\n"
+          content: "Hello " + pocName + ", "+ "<br><br>"+
+          "This is a reminder of the following upcoming NOFO report due dates. Please email  the PI to remind them of the upcoming due date. Please send any relevant templates (i.e. cruise report template) and refer to the NOFO POC Manual (https://drive.google.com/file/d/1wGF36iINNm-TWx-Nv5Z3VXVdzbod7wc9/view?usp=sharing) for additional information on the upcoming deadline." + "<br><br>"
         };
       }
 
@@ -30,21 +30,28 @@ function sendPOCemails (upcomingDueDates){
       "Due Date: " + dueDate.formattedDueDate + "<br><br>";
       });
       
-    emailContent += "<br><i>*Projects funded prior to FY23 are only required to submit Cruise Plans is only due 30 days before the start of fieldwork. This due date is correct for projects funded in FY23 and beyond but is 30 days earlier than the due date for projects funded prior to FY23. Check project funding year to verify Cruise Plan due date. <br> No Cost Extension (NCE) deadline is calculated as 60 days before grant ends. PIs should submit their request for a NCE 60 days prior to the grant end and no later than 30 days before the grant ends. </i>";
-      
+          
       //Send email to each POC Name in the group
-      for (var pocEmail in pocEmails){
+      
+        
+        for (var pocEmail in pocEmails){
+          //Add footnote to email
+        pocEmails[pocEmail].content += "<br><i>*Projects funded prior to FY23 are only required to submit Cruise Plans is only due 30 days before the start of fieldwork. This due date is correct for projects funded in FY23 and beyond but is 30 days earlier than the due date for projects funded prior to FY23. Check project funding year to verify Cruise Plan due date. <br> **No Cost Extension (NCE) deadline is calculated as 60 days before grant ends. PIs should submit their request for a NCE 60 days prior to the grant end and no later than 30 days before the grant ends. </i>";
+
+        //For debugging, override recipient; otherwise use pocEmail as recipient to send one email to each individual with unique email addresses
+        //var emailAddress = "ashley.marranzino@noaa.gov"; //turn off this line unless debugging
         var emailContent = pocEmails[pocEmail].content;
-        MailApp.sendEmail({
-              to: pocEmail,
+        
+        try{
+          MailApp.sendEmail({
+              to: emailAddress,
               subject: "POC Upcoming Due Date Notification",
               htmlBody: emailContent
-            });
-            
-      Logger.log("Email sent to " + pocEmail);
-      }
-      } else {
-    Logger.log("No upcoming due dates to send.");
-  }
-}
-
+            }); 
+            Logger.log("Email sent to " + pocEmail);
+           } catch (e) {
+            Logger.log("Failed to send email to" + pocEmail + ": " + e.message);
+          }
+        }// end of for loop t send email to POCs
+  } // end if (upcomingDueDates.length >0) statement
+} // end of function
