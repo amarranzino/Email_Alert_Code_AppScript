@@ -1,5 +1,12 @@
 //function saved from https://mccarthydanielle.medium.com/trigger-email-reminders-based-on-dates-in-google-sheets-9aa2060d7aa2
-/// Next steps: UPDATE RPPR DUE DATES SO FEDS ARE JUST EVERY 6 MONTHS (pull in PI Affiliation col, then filter for All fields starting with "Federal" and if those, then reports are due 30 days after end of reporting window) ; write code for metrics additions
+/// Next steps: add in code to see if metrics have been added or not; Find a way to loop through the project index # to connect fieldwork only lines to original project
+
+/// NOTE: This code can be run for a single line to display the due dates associated with that project. To do so:
+// 1) turn off rows 474 and 475 (send emails) by adding "//" to the start of the line. 2) Turn on the loop in lines between 120 - 123 by removing the "/*" and "*/" at the start of those lines
+// 3) enter the row of the project in S&T Metrics on row 120 in the code chunk "if(currentRowInSheet !==XX)". 4) Hit "Run" at the top of the page
+// 5) read the logger outputs to see when duedates are scheduled. 
+// ONCE FINISHED: Remove the "//" in front of lines 474 and 475, add "/*" in front of row 120, add "*/" in front of row 123, and hit save. 
+
  
 function emailAlert(){
   
@@ -110,7 +117,7 @@ function emailAlert(){
       var currentRowInSheet = row + 2
 
      // FOR DEBUGGING - turn on the following if loop and select the row you would like to test- this will skip any rows besides the one you input.
-     /* if(currentRowInSheet !==614){ //skip over all rows besides one - turned on for debugging
+     /* if(currentRowInSheet !==608){ //skip over all rows besides one - turned on for debugging
         continue;
         }
      */
@@ -142,6 +149,7 @@ function emailAlert(){
               Logger.log("Row " + currentRowInSheet + ": Valid Data Due Date found: " + dataDue);
               var daystodataDueDate = Math.floor((dataDue - today) / (1000 * 60 * 60 * 24));
               var formattedDataDueDate = Utilities.formatDate(dataDue, "GMT", "MM/dd/yyyy");
+              Logger.log ("Data is due in " + daystodataDueDate + " days on " + formattedDataDueDate);
               //IF data is due in less than 90 days, add project to upcomingDueDates array
               if (daystodataDueDate >= 0 && daystodataDueDate <= 90) {
                   upcomingDueDates.push({
@@ -167,12 +175,14 @@ function emailAlert(){
           Logger.log("Row " + currentRowInSheet + ": Raw value from '" + END_DATE_HEADER + "': '" + rawEndDateValue + "'");
          */
           var endDate = new Date(data[row][headerMap[END_DATE_HEADER]]);
+          Logger.log ("Grant end date is on " + endDate);
           
           if (endDate && !isNaN(endDate.getTime())) {
               var finalReportDue = new Date(endDate);
               finalReportDue.setDate(endDate.getDate()+120); //Adds 120 days to end of grant to calculate the final report due date
               var daystoFinalReportDue = Math.floor((finalReportDue - today) / (1000 * 60 * 60 * 24));
               var formattedFinalReport = Utilities.formatDate(finalReportDue, "GMT", "MM/dd/yyyy");
+              Logger.log ("Final Report is due in " + daystoFinalReportDue + " days on " + formattedFinalReport);
               //IF final report is due in less than 60 days, add project to upcomingDueDates array
               if (daystoFinalReportDue >= 0 && daystoFinalReportDue <= 60) {
                   upcomingDueDates.push({
@@ -201,6 +211,7 @@ function emailAlert(){
             cruiseReportDue.setDate (cruiseEnd.getDate()+60); //Calculate the cruise report due date - 60 days after cruise ends
             var daystoCruiseReportDue = Math.floor((cruiseReportDue - today) / (1000*60*60*24));
             var formattedCruiseReportDue = Utilities.formatDate(cruiseReportDue, "GMT", "MM/dd/yyyy");
+            Logger.log ("Cruise Report is due in " + daystoCruiseReportDue + " days on " + formattedCruiseReportDue);
             // If Cruise report is due in less than 45 days, add project to upcomingDueDates array
             if (daystoCruiseReportDue >=0 && daystoCruiseReportDue <=45){
               upcomingDueDates.push({
@@ -226,7 +237,7 @@ function emailAlert(){
           var cruiseStart = new Date(data[row][headerMap[CRUISE_START_HEADER]]); // Get cruiseStart here
           if (cruiseStart && !isNaN(cruiseStart.getTime())) {
             var cruisePlanDue = new Date (cruiseStart); 
-            cruisePlanDue.setDate(cruiseStart.getDate() - 60); // Modified to just set this for 60 days prior to start date so that 2nd cruises are captured (currently not captured because the FY roject Funded field is not filled in for 2nd fieldwork rows). Will note that POCs need to verify grant funding date to determine actual due date. 
+            cruisePlanDue.setDate(cruiseStart.getDate() - 60); // Modified to just set this for 60 days prior to start date so that 2nd cruises are captured (currently not captured because the FY project Funded field is not filled in for 2nd fieldwork rows). Will note that POCs need to verify grant funding date to determine actual due date. 
            /*
            //Set cruise plan due date to 30 days before cruise for any project funded in FY22 or earlier and to 60 days prior to cruise for any project funded in or after FY23
             if(projectFY >= 23){
@@ -238,6 +249,7 @@ function emailAlert(){
             */
             var daystoCruisePlanDue = Math.floor((cruisePlanDue - today) / (1000*60*60*24));
             var formattedCruisePlanDue = Utilities.formatDate(cruisePlanDue, "GMT", "MM/dd/yyyy");
+            Logger.log ("Cruise Plan* is due in " + daystoCruisePlanDue + " days on " + formattedCruisePlanDue);
             // If Cruise plan is due in less than 45 days, add project to upcomingDueDates array
             if (daystoCruisePlanDue >=0 && daystoCruisePlanDue <=45){
               upcomingDueDates.push({
@@ -298,6 +310,7 @@ function emailAlert(){
             Logger.log ("Start date: " + startDate);
             var daystosemiannual6moDue = Math.floor((semiannual6moDue - today) / (1000*60*60*24));
             var formattedsemiannual6moDue = Utilities.formatDate(semiannual6moDue, "GMT", "MM/dd/yyyy");
+            Logger.log ("First RPPR is due in " + daystosemiannual6moDue + " days on " + formattedsemiannual6moDue);
             // If  report is due in less than 45 days, add project to upcomingDueDates array
             if (daystosemiannual6moDue >=0 && daystosemiannual6moDue <=45){
               upcomingDueDates.push({
@@ -351,8 +364,9 @@ function emailAlert(){
               reportEnd.setMonth(reportEnd.getMonth()+6); // calculate the end of the reporting period as every 6 months from startDate for the duration of the grant cycle
               
               Logger.log ("Report period: " + reportStart + " - " + reportEnd);
-
+              
               if ((reportEnd >= july1 && reportEnd <= dec31) && (daystosemiannualJan >=0 && daystosemiannualJan <=45)){
+                 Logger.log("Next RPPR due in " + daystosemiannualJan + " days on " + formattedsemiannualJan); 
                 upcomingDueDates.push({
                   type: "Semi-annual RPPR",
                     piName: piName,
@@ -365,10 +379,11 @@ function emailAlert(){
                     project: project,
                     uniqueID: uniqueID
                 });
-                Logger.log("Next RPPR due in " + daystosemiannualJan + " days on " + formattedsemiannualJan); 
+               
               } else if((reportEnd >= jan1 && reportEnd <= june30) && 
                (startDate <= sevenmonthsago) && 
                (daystosemiannualJuly >=0 && daystosemiannualJuly <=45)){
+                Logger.log("Next RPPR due in " + daystosemiannualJuly + " days on " + formattedsemiannualJuly);
                 upcomingDueDates.push({
                   type: "Semi-annual RPPR",
                     piName: piName,
@@ -381,7 +396,7 @@ function emailAlert(){
                     project: project,
                     uniqueID: uniqueID
                 });
-                Logger.log("Next Rppr due in " + daystosemiannualJuly + " days on " + formattedsemiannualJuly);
+                
               } else{
                 Logger.log("Row " + currentRowInSheet + " RPPR not due within 45 days.");
               }
