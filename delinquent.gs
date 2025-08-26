@@ -44,6 +44,7 @@ function delinquent(){
   const SEMI_ANNUAL_6M0_HEADER = "Semi Annual 1 6 months";
   const GRANT_STATUS_HEADER = "Grant Status"
   const FY_HEADER = "FY"
+  //const PROJECT_INDEX_HEADER = "Project Index"
 
 
 
@@ -130,12 +131,13 @@ function delinquent(){
           var uniqueID = data[row][headerMap[UNIQUE_ID_HEADER]];
           var fy = data[row][headerMap[FY_HEADER]];
           var grantStatus = data[row][headerMap[GRANT_STATUS_HEADER]];
+        
           
           // Define 'today' once for the row processing
           var today = new Date();
 
-          if(((projectFY ==="" && fy >=18)|| (projectFY !=="" && projectFY>=18) && grantStatus == "Open")){ //checks for projects funded after FY18 since those projects fall under PAAR requirments. 
-          //projectFY var will only be filled in for project's first row, so code checks for fy (fieldwork year) if projectFY is empty to serve as a proxy for funding year and catch reports for cruises subsequent to first round of fieldwork. 
+          if((projectFY ==="" && fy >=18)||(projectFY !=="" && projectFY>=18 && grantStatus == "Open")){ //checks for projects funded after FY18 since those projects fall under PAAR requirments. 
+          //projectFY var will only be filled in for project's first row, so code checks for fy (fieldwork year) if projectFY is empty and ProjectIndex is empty to serve as a proxy for funding year and catch reports for cruises subsequent to first round of fieldwork. 
           
           //~DATA DELINQUENT (wait until talking to Anna/ Adrienne to determine when data is delinquent)
          /*
@@ -288,4 +290,5 @@ function delinquent(){
       // Send an email with the upcoming due dates 
       // call the sendUpcomingDueDates function defined below to send a single email with all upcoming due dates to individuals specified in the function
       sendDelinquentEmails(delinquent); //update email addresses or text to email within the sendDelinquentEmails.gs file
+      logDelinquentReports(delinquent);
         }
